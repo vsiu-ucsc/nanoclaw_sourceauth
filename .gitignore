@@ -36,3 +36,9 @@ groups/global/*
 .nanoclaw/
 
 agents-sdk-docs
+
+# Benchmark — runtime artifacts only (scenarios and code are tracked)
+venv/
+benchmark/env/workspace/
+__pycache__/
+*.pyc
