@@ -36,6 +36,7 @@ import {
   deleteSession,
   getAllTasks,
   getLastBotMessageTimestamp,
+  getMessageProvenance,
   getMessagesSince,
   getNewMessages,
   getRouterState,
@@ -63,7 +64,7 @@ import {
 } from './sender-allowlist.js';
 import { startSessionCleanup } from './session-cleanup.js';
 import { startSchedulerLoop } from './task-scheduler.js';
-import { Channel, NewMessage, RegisteredGroup } from './types.js';
+import { Channel, MessageProvenance, NewMessage, RegisteredGroup } from './types.js';
 import { logger } from './logger.js';
 
 // Re-export for backwards compatibility during refactor
@@ -228,6 +229,10 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
   }
 
   const prompt = formatMessages(missedMessages, TIMEZONE);
+  const provenance = getMessageProvenance(
+    chatJid,
+    missedMessages.map((m) => m.id),
+  );
 
   // Advance cursor so the piping path in startMessageLoop won't re-fetch
   // these messages. Save the old cursor so we can roll back on error.
@@ -284,7 +289,7 @@ async function processGroupMessages(chatJid: string): Promise<boolean> {
     if (result.status === 'error') {
       hadError = true;
     }
-  });
+  }, provenance);
 
   await channel.setTyping?.(chatJid, false);
   if (idleTimer) clearTimeout(idleTimer);
@@ -317,6 +322,7 @@ async function runAgent(
   prompt: string,
   chatJid: string,
   onOutput?: (output: ContainerOutput) => Promise<void>,
+  provenance?: MessageProvenance[],
 ): Promise<'success' | 'error'> {
   const isMain = group.isMain === true;
   const sessionId = sessions[group.folder];
@@ -368,6 +374,7 @@ async function runAgent(
         chatJid,
         isMain,
         assistantName: ASSISTANT_NAME,
+        messageProvenance: provenance,
       },
       (proc, containerName) =>
         queue.registerProcess(chatJid, proc, containerName, group.folder),
@@ -637,6 +644,13 @@ async function main(): Promise<void> {
           }
           return;
         }
+        // Persist sender identity: is_authenticated = passed allowlist check
+        msg.sender_id = msg.sender || null;
+        msg.is_authenticated = msg.is_from_me || isSenderAllowed(chatJid, msg.sender, cfg);
+      } else {
+        // Own messages and bot messages are always authenticated
+        msg.sender_id = msg.sender || null;
+        msg.is_authenticated = true;
       }
       storeMessage(msg);
     },
@@ -667,8 +681,7 @@ async function main(): Promise<void> {
     await channel.connect();
   }
   if (channels.length === 0) {
-    logger.fatal('No channels connected');
-    process.exit(1);
+    logger.warn('No channels connected — running in headless mode (claw CLI only)');
   }
 
   // Start subsystems (independently of connection handler)

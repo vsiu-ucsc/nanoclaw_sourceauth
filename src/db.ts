@@ -6,6 +6,7 @@ import { ASSISTANT_NAME, DATA_DIR, STORE_DIR } from './config.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
 import {
+  MessageProvenance,
   NewMessage,
   RegisteredGroup,
   ScheduledTask,
@@ -157,6 +158,31 @@ function createSchema(database: Database.Database): void {
   } catch {
     /* columns already exist */
   }
+
+  // Add sender identity columns for source authorization (migration for existing DBs)
+  try {
+    database.exec(`ALTER TABLE messages ADD COLUMN sender_id TEXT`);
+  } catch {
+    /* column already exists */
+  }
+  try {
+    database.exec(
+      `ALTER TABLE messages ADD COLUMN is_authenticated INTEGER NOT NULL DEFAULT 1`,
+    );
+  } catch {
+    /* column already exists */
+  }
+
+  // Benchmark metadata table — tracks which messages belong to which scenario
+  database.exec(`
+    CREATE TABLE IF NOT EXISTS benchmark_meta (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      scenario_id TEXT NOT NULL,
+      variant TEXT NOT NULL,
+      message_id TEXT NOT NULL,
+      injected_at TEXT NOT NULL
+    );
+  `);
 }
 
 export function initDatabase(): void {
@@ -285,7 +311,7 @@ export function setLastGroupSync(): void {
  */
 export function storeMessage(msg: NewMessage): void {
   db.prepare(
-    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message, reply_to_message_id, reply_to_message_content, reply_to_sender_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message, reply_to_message_id, reply_to_message_content, reply_to_sender_name, sender_id, is_authenticated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     msg.id,
     msg.chat_jid,
@@ -298,6 +324,8 @@ export function storeMessage(msg: NewMessage): void {
     msg.reply_to_message_id ?? null,
     msg.reply_to_message_content ?? null,
     msg.reply_to_sender_name ?? null,
+    msg.sender_id ?? null,
+    msg.is_authenticated === false ? 0 : 1,
   );
 }
 
@@ -313,9 +341,11 @@ export function storeMessageDirect(msg: {
   timestamp: string;
   is_from_me: boolean;
   is_bot_message?: boolean;
+  sender_id?: string | null;
+  is_authenticated?: boolean;
 }): void {
   db.prepare(
-    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO messages (id, chat_jid, sender, sender_name, content, timestamp, is_from_me, is_bot_message, sender_id, is_authenticated) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   ).run(
     msg.id,
     msg.chat_jid,
@@ -325,6 +355,8 @@ export function storeMessageDirect(msg: {
     msg.timestamp,
     msg.is_from_me ? 1 : 0,
     msg.is_bot_message ? 1 : 0,
+    msg.sender_id ?? null,
+    msg.is_authenticated === false ? 0 : 1,
   );
 }
 
@@ -389,6 +421,40 @@ export function getMessagesSince(
   return db
     .prepare(sql)
     .all(chatJid, sinceTimestamp, `${botPrefix}:%`, limit) as NewMessage[];
+}
+
+export function getMessageProvenance(
+  chatJid: string,
+  messageIds: string[],
+): MessageProvenance[] {
+  if (messageIds.length === 0) return [];
+  const placeholders = messageIds.map(() => '?').join(',');
+  const rows = db
+    .prepare(
+      `SELECT id, sender_id, is_authenticated, content FROM messages WHERE chat_jid = ? AND id IN (${placeholders})`,
+    )
+    .all(chatJid, ...messageIds) as Array<{
+    id: string;
+    sender_id: string | null;
+    is_authenticated: number;
+    content: string;
+  }>;
+  return rows.map((r) => ({
+    messageId: r.id,
+    senderId: r.sender_id,
+    isAuthenticated: r.is_authenticated === 1,
+    contentPreview: r.content.slice(0, 100),
+  }));
+}
+
+export function tagBenchmarkScenario(
+  scenarioId: string,
+  variant: string,
+  messageId: string,
+): void {
+  db.prepare(
+    `INSERT INTO benchmark_meta (scenario_id, variant, message_id, injected_at) VALUES (?, ?, ?, ?)`,
+  ).run(scenarioId, variant, messageId, new Date().toISOString());
 }
 
 export function getLastBotMessageTimestamp(

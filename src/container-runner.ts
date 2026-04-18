@@ -27,7 +27,7 @@ import {
 } from './container-runtime.js';
 import { detectAuthMode } from './credential-proxy.js';
 import { validateAdditionalMounts } from './mount-security.js';
-import { RegisteredGroup } from './types.js';
+import { MessageProvenance, RegisteredGroup } from './types.js';
 
 // Sentinel markers for robust output parsing (must match agent-runner)
 const OUTPUT_START_MARKER = '---NANOCLAW_OUTPUT_START---';
@@ -42,6 +42,19 @@ export interface ContainerInput {
   isScheduledTask?: boolean;
   assistantName?: string;
   script?: string;
+  messageProvenance?: MessageProvenance[];
+}
+
+// In-memory map of groupFolder → provenance for the currently active invocation.
+// Read by the IPC watcher to perform source authorization checks.
+const activeProvenance = new Map<string, MessageProvenance[]>();
+
+export function getActiveProvenance(groupFolder: string): MessageProvenance[] {
+  return activeProvenance.get(groupFolder) ?? [];
+}
+
+export function clearActiveProvenance(groupFolder: string): void {
+  activeProvenance.delete(groupFolder);
 }
 
 export interface ContainerOutput {
@@ -347,6 +360,11 @@ export async function runContainerAgent(
     let stdoutTruncated = false;
     let stderrTruncated = false;
 
+    // Publish provenance so the IPC watcher can perform source auth checks
+    if (input.messageProvenance) {
+      activeProvenance.set(input.groupFolder, input.messageProvenance);
+    }
+
     container.stdin.write(JSON.stringify(input));
     container.stdin.end();
 
@@ -463,6 +481,7 @@ export async function runContainerAgent(
 
     container.on('close', (code) => {
       clearTimeout(timeout);
+      clearActiveProvenance(input.groupFolder);
       const duration = Date.now() - startTime;
 
       if (timedOut) {

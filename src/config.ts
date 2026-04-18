@@ -7,7 +7,11 @@ import { isValidTimezone } from './timezone.js';
 // Read config values from .env (falls back to process.env).
 // Secrets (API keys, tokens) are NOT read here — they are loaded only
 // by the credential proxy (credential-proxy.ts), never exposed to containers.
-const envConfig = readEnvFile(['ASSISTANT_NAME', 'ASSISTANT_HAS_OWN_NUMBER', 'TZ']);
+const envConfig = readEnvFile([
+  'ASSISTANT_NAME',
+  'ASSISTANT_HAS_OWN_NUMBER',
+  'TZ',
+]);
 
 export const ASSISTANT_NAME =
   process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'Andy';
@@ -94,3 +98,24 @@ function resolveConfigTimezone(): string {
   return 'UTC';
 }
 export const TIMEZONE = resolveConfigTimezone();
+
+export interface SourceAuthConfig {
+  enabled: boolean;
+  blockMode: 'block' | 'warn';
+  identityAblation: boolean;
+  allowlistedDomains: string[];
+}
+
+export const SOURCE_AUTH_CONFIG: SourceAuthConfig = {
+  enabled: (process.env.SOURCE_AUTH_ENABLED ?? 'true') !== 'false',
+  blockMode:
+    process.env.SOURCE_AUTH_MODE === 'warn' ? 'warn' : 'block',
+  identityAblation: process.env.IDENTITY_ABLATION === 'true',
+  allowlistedDomains: (process.env.SOURCE_AUTH_ALLOWLIST || '')
+    .split(',')
+    .map((d) => d.trim())
+    .filter(Boolean),
+};
+
+export const BENCHMARK_MODE = process.env.BENCHMARK_MODE === 'true';
+export const BENCHMARK_GROUP = process.env.BENCHMARK_GROUP || 'benchmark';

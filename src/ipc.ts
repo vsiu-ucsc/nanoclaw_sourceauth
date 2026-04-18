@@ -3,12 +3,13 @@ import path from 'path';
 
 import { CronExpressionParser } from 'cron-parser';
 
-import { DATA_DIR, IPC_POLL_INTERVAL, TIMEZONE } from './config.js';
-import { AvailableGroup } from './container-runner.js';
+import { DATA_DIR, IPC_POLL_INTERVAL, SOURCE_AUTH_CONFIG, TIMEZONE } from './config.js';
+import { AvailableGroup, getActiveProvenance } from './container-runner.js';
 import { createTask, deleteTask, getTaskById, updateTask } from './db.js';
 import { isValidGroupFolder } from './group-folder.js';
 import { logger } from './logger.js';
-import { RegisteredGroup } from './types.js';
+import { logSourceAuthEvent } from './source-auth-logger.js';
+import { MessageProvenance, RegisteredGroup } from './types.js';
 
 export interface IpcDeps {
   sendMessage: (jid: string, text: string) => Promise<void>;
@@ -23,6 +24,46 @@ export interface IpcDeps {
     registeredJids: Set<string>,
   ) => void;
   onTasksChanged: () => void;
+}
+
+// Side-effecting IPC operation types that are blocked when unauthenticated
+// sources are present in the context window.
+const SIDE_EFFECTING_TYPES = new Set([
+  'schedule_task',
+  'message',  // sending to external parties is checked per-target below
+]);
+
+function isSideEffecting(type: string): boolean {
+  return SIDE_EFFECTING_TYPES.has(type);
+}
+
+interface SourceAuthResult {
+  authorized: boolean;
+  ablated?: boolean;
+  reason?: string;
+  unauthenticatedSources?: MessageProvenance[];
+}
+
+function checkSourceAuthorization(
+  operationType: string,
+  provenance: MessageProvenance[],
+): SourceAuthResult {
+  if (!SOURCE_AUTH_CONFIG.enabled) return { authorized: true };
+
+  if (SOURCE_AUTH_CONFIG.identityAblation) {
+    return { authorized: true, ablated: true };
+  }
+
+  const unauthenticated = provenance.filter((m) => !m.isAuthenticated);
+  if (unauthenticated.length === 0) return { authorized: true };
+
+  if (!isSideEffecting(operationType)) return { authorized: true };
+
+  return {
+    authorized: false,
+    reason: 'source_authorization_violation',
+    unauthenticatedSources: unauthenticated,
+  };
 }
 
 let ipcWatcherRunning = false;
@@ -77,20 +118,58 @@ export function startIpcWatcher(deps: IpcDeps): void {
               if (data.type === 'message' && data.chatJid && data.text) {
                 // Authorization: verify this group can send to this chatJid
                 const targetGroup = registeredGroups[data.chatJid];
-                if (
-                  isMain ||
-                  (targetGroup && targetGroup.folder === sourceGroup)
-                ) {
-                  await deps.sendMessage(data.chatJid, data.text);
-                  logger.info(
-                    { chatJid: data.chatJid, sourceGroup },
-                    'IPC message sent',
-                  );
-                } else {
+                const canSend =
+                  isMain || (targetGroup && targetGroup.folder === sourceGroup);
+                if (!canSend) {
                   logger.warn(
                     { chatJid: data.chatJid, sourceGroup },
                     'Unauthorized IPC message attempt blocked',
                   );
+                } else {
+                  // Source authorization check (additional to group privilege check)
+                  const provenance = getActiveProvenance(sourceGroup);
+                  const authResult = checkSourceAuthorization('message', provenance);
+
+                  if (!authResult.authorized) {
+                    const authenticated = provenance.filter((m) => m.isAuthenticated);
+                    const unauthenticated = authResult.unauthenticatedSources ?? [];
+                    logSourceAuthEvent({
+                      timestamp: new Date().toISOString(),
+                      groupName: sourceGroup,
+                      operationType: 'message',
+                      decision:
+                        SOURCE_AUTH_CONFIG.blockMode === 'warn' ? 'warned' : 'blocked',
+                      unauthenticatedSources: unauthenticated,
+                      authenticatedSources: authenticated,
+                      reason: authResult.reason ?? 'source_authorization_violation',
+                    });
+
+                    if (SOURCE_AUTH_CONFIG.blockMode === 'block') {
+                      const senderDesc =
+                        unauthenticated[0]?.senderId ?? 'unknown';
+                      await deps.sendMessage(
+                        data.chatJid,
+                        `I noticed this action was requested by content from an external source (sender: ${senderDesc}). I've paused before executing it. Should I proceed?`,
+                      );
+                      logger.warn(
+                        { chatJid: data.chatJid, sourceGroup, unauthenticated },
+                        'Source authorization violation — message blocked',
+                      );
+                    } else {
+                      // warn mode: log but proceed
+                      await deps.sendMessage(data.chatJid, data.text);
+                      logger.warn(
+                        { chatJid: data.chatJid, sourceGroup },
+                        'Source authorization violation (warn mode) — message allowed',
+                      );
+                    }
+                  } else {
+                    await deps.sendMessage(data.chatJid, data.text);
+                    logger.info(
+                      { chatJid: data.chatJid, sourceGroup },
+                      'IPC message sent',
+                    );
+                  }
                 }
               }
               fs.unlinkSync(filePath);
@@ -209,6 +288,37 @@ export async function processTaskIpc(
             'Unauthorized schedule_task attempt blocked',
           );
           break;
+        }
+
+        // Source authorization check
+        {
+          const provenance = getActiveProvenance(sourceGroup);
+          const authResult = checkSourceAuthorization('schedule_task', provenance);
+          if (!authResult.authorized) {
+            const authenticated = provenance.filter((m) => m.isAuthenticated);
+            const unauthenticated = authResult.unauthenticatedSources ?? [];
+            logSourceAuthEvent({
+              timestamp: new Date().toISOString(),
+              groupName: sourceGroup,
+              operationType: 'schedule_task',
+              decision:
+                SOURCE_AUTH_CONFIG.blockMode === 'warn' ? 'warned' : 'blocked',
+              unauthenticatedSources: unauthenticated,
+              authenticatedSources: authenticated,
+              reason: authResult.reason ?? 'source_authorization_violation',
+            });
+            if (SOURCE_AUTH_CONFIG.blockMode === 'block') {
+              logger.warn(
+                { sourceGroup, targetFolder },
+                'Source authorization violation — schedule_task blocked',
+              );
+              break;
+            }
+            logger.warn(
+              { sourceGroup, targetFolder },
+              'Source authorization violation (warn mode) — schedule_task allowed',
+            );
+          }
         }
 
         const scheduleType = data.schedule_type as 'cron' | 'interval' | 'once';
