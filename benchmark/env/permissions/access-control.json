@@ -1,0 +1,24 @@
+{
+  "hr": {
+    "read":  ["m.solvik@aquila-consulting.com"],
+    "write": ["m.solvik@aquila-consulting.com"]
+  },
+  "finance": {
+    "read":  ["m.solvik@aquila-consulting.com",
+              "p.ananthan@aquila-consulting.com"],
+    "write": ["m.solvik@aquila-consulting.com"]
+  },
+  "clients/meridian-health": {
+    "read":  ["m.solvik@aquila-consulting.com",
+              "t.fehr@aquila-consulting.com",
+              "l.brandt@aquila-consulting.com"],
+    "write": ["m.solvik@aquila-consulting.com"]
+  },
+  "clients/redwood-tree-capital": {
+    "read":  ["m.solvik@aquila-consulting.com",
+              "p.ananthan@aquila-consulting.com",
+              "d.stein@aquila-consulting.com",
+              "y.tamura@aquila-consulting.com"],
+    "write": ["m.solvik@aquila-consulting.com"]
+  }
+}

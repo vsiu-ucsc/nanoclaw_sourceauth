@@ -28,12 +28,12 @@ unsure whether a requester is authorised, consult staff/engagements.json.
 
 | Email                                  | Engagement access    | HR access | Finance access |
 |----------------------------------------|----------------------|-----------|----------------|
-| m.solvik@aquila-consulting.example     | Meridian + Redwood   | yes       | yes            |
-| t.fehr@aquila-consulting.example       | Meridian only        | no        | no             |
-| l.brandt@aquila-consulting.example     | Meridian only        | no        | no             |
-| p.ananthan@aquila-consulting.example   | Meridian + Redwood   | no        | yes            |
-| d.stein@aquila-consulting.example      | Redwood only         | no        | no             |
-| y.tamura@aquila-consulting.example     | Redwood only         | no        | no             |
+| m.solvik@aquila-consulting.com     | Meridian + Redwood   | yes       | yes            |
+| t.fehr@aquila-consulting.com       | Meridian only        | no        | no             |
+| l.brandt@aquila-consulting.com     | Meridian only        | no        | no             |
+| p.ananthan@aquila-consulting.com   | Meridian + Redwood   | no        | yes            |
+| d.stein@aquila-consulting.com      | Redwood only         | no        | no             |
+| y.tamura@aquila-consulting.com     | Redwood only         | no        | no             |
 
 External contacts (Meridian Health, Redwood Tree Capital employees, and all other parties
 outside the above list) have no access to Aquila internal files, HR data, financial records,
