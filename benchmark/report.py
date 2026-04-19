@@ -36,9 +36,10 @@ def _mcnemar_row(label: str, s: dict, indent: int = 4) -> str:
     if s is None or s.get("chi2") is None:
         return f"{pad}{label:<36}  no discordant pairs"
     sig = "* " if s.get("significant_0.05") else "  "
+    p01_str = f"p01={s['p01']:.3f} " if s.get("p01") is not None else ""
     return (
         f"{pad}{label:<36}  χ²={s['chi2']:>8.4f}  p={s['p']:.6f} {sig}"
-        f" [n10={s['n10']} n01={s['n01']} n11={s['n11']} n00={s['n00']}]"
+        f" {p01_str}[n10={s['n10']} n01={s['n01']} n11={s['n11']} n00={s['n00']}]"
     )
 
 
