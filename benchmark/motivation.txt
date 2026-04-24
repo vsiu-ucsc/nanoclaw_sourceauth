@@ -1,0 +1,59 @@
+Motivation (TL;DR)
+==================
+
+Problem and framing. LLM agents receive inputs from multiple sources —
+authenticated users, tool outputs, memory records, external documents —
+and must decide which instructions to act on. Getting this wrong
+produces two canonical failure modes: indirect prompt injection (content-
+side: agent follows instructions in untrusted content) and confused
+deputy (caller-side: agent uses its elevated permissions for an
+unauthorised caller). Current LLM-agent deployments — and the benchmarks
+that measure them (AgentDojo, InjecAgent, SHADE-ARENA, WASP) — ship with
+*no* explicit authorisation primitives exposed to the model; the agent is
+left to pattern-match on content. We pull directly from two canonical
+bodies of security work to address this: information-flow control on
+inputs (Sabelfeld & Myers 2003; Perl taint, TaintDroid; Microsoft
+Spotlighting Hines et al. 2024 as the LLM-context instance) and
+role-based access control at the policy decision point (Lampson 1971;
+Sandhu et al. 1996; XACML / OPA / AWS IAM session context). We additionally
+import CSRF-style session-bound tokens (web security, 30+ years) to give
+IFC labels structural — rather than merely conventional — forgery
+resistance in a setting where the attacker can write entire document
+bodies through tool outputs.
+
+Benchmark and findings. We evaluate agents factorially: `bare` (no
+primitives exposed, AgentDojo-equivalent floor) × `labels_unbound` (IFC
+header on observations, no session token, ablation control) × `labels`
+(binding-token IFC header, CSRF-style unforgeable to attacker-writable
+content) × `capabilities` (RBAC `granted_scopes` in session) × `full`
+(binding-token labels + capabilities), crossed with two attack families
+(IPI, confused deputy) and paired trusted/untrusted variants over 45
+scenario pairs per family (McNemar-testable). Each run mints a fresh
+per-scenario session token invisible to the attacker. The
+`labels` vs `labels_unbound` comparison isolates whether the binding token
+is load-bearing or decorative: if frontier LLMs faithfully enforce a
+prompted CSRF-style protocol, the bound form should outperform the
+unbound form; if they pattern-match on header stems alone, the two should
+converge. Prior results on Sonnet 4.6 (using unbound labels only) show
+capabilities substantially defending confused deputy (~40% → ~91% block
+rate on untrusted) while labels alone add little over a strong baseline
+— the binding-token ablation determines whether structural reinforcement
+changes that picture. The contribution is (i) a factorial benchmark
+instrumenting two canonical primitives that current agent frameworks
+lack, (ii) the first measurement of LLM enforcement faithfulness for
+a CSRF-style in-prompt protocol, and (iii) empirical characterisation of
+which authorisation failure mode each primitive actually defends against.
+
+Results (preliminary, Sonnet 4.6). RBAC-style capabilities substantially
+defend confused deputy — a large and statistically clean positive effect.
+IFC-style source labels deliver a smaller IPI-side benefit with an
+asymmetric caller-side cost: exposing the labels convention pulls the
+model away from caller-authority reasoning and actually hurts confused-
+deputy block rates. The CSRF-style binding-token ablation returns a
+clear null — bound and unbound label variants are statistically
+indistinguishable across every cell — indicating the model pattern-
+matches on the label stems and does not faithfully enforce the prompted
+token check at inference time. Net picture: one of the two primitives
+works as advertised; the other underperforms on its defensive side and
+reveals that a canonical cryptographic mechanism doesn't translate into
+LLM-enforcement without training support. Cross-model replication is next.

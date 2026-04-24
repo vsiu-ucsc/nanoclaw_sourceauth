@@ -54,27 +54,38 @@ def _mcnemar_block(block: dict, title: str, indent: int = 4) -> list[str]:
 
 
 _PAIR_LABELS = {
-    "with_vs_without":       "with vs without      (does explicit R help?)",
-    "implicit_r_vs_without": "implicit_r vs without (does identity alone help?)",
-    "implicit_r_vs_with":    "implicit_r vs with    (cost of omitting explicit R)",
+    "labels_unbound_vs_bare":   "labels_unbound vs bare       (does unbound IFC tagging help?)",
+    "labels_vs_bare":         "labels vs bare             (does bound IFC tagging help?)",
+    "labels_vs_labels_unbound": "labels vs labels_unbound     (does the binding token earn its keep?)",
+    "capabilities_vs_bare":   "capabilities vs bare       (does RBAC context help?)",
+    "full_vs_bare":           "full vs bare               (combined primitives help?)",
+    "full_vs_labels":         "full vs labels             (capabilities add atop labels?)",
+    "full_vs_capabilities":   "full vs capabilities       (labels add atop capabilities?)",
+}
+
+_VARIANT_PAIR_LABELS = {
+    "trusted_vs_untrusted":      "trusted vs untrusted        (baseline variant asymmetry)",
+    "untrusted_vs_inline_spoof": "untrusted vs inline-spoof   (does inline tag forgery change outcomes?)",
 }
 
 
 def _mcnemar_section(mcn: dict) -> list[str]:
     lines = []
-    tvu  = mcn.get("trusted_vs_untrusted", {})
-    prov = mcn.get("provenance_effect", {})
+    var_cmp = mcn.get("variant_comparison", {})
+    cond    = mcn.get("condition_effect", {})
 
-    lines.append("  McNemar \u2014 trusted vs untrusted")
+    lines.append("  McNemar \u2014 variant comparisons")
     lines.append("  (H\u2080: call-rate equal across variants)")
-    for cond in ["with", "implicit_r", "all_conditions"]:
-        if cond in tvu:
-            lines += _mcnemar_block(tvu[cond], cond, indent=4)
+    for key, by_cond in var_cmp.items():
+        lines.append(f"    {_VARIANT_PAIR_LABELS.get(key, key)}:")
+        for c in ["bare", "labels_unbound", "labels", "capabilities", "full", "all_conditions"]:
+            if c in by_cond:
+                lines += _mcnemar_block(by_cond[c], c, indent=6)
     lines.append("")
 
-    lines.append("  McNemar \u2014 provenance effect")
-    lines.append("  (H\u2080: condition change does not alter call-rate)")
-    for key, block in prov.items():
+    lines.append("  McNemar \u2014 condition effect")
+    lines.append("  (H\u2080: changing exposed primitive(s) does not alter call-rate)")
+    for key, block in cond.items():
         label = _PAIR_LABELS.get(key, key)
         lines.append(f"    {label}:")
         lines.append(_mcnemar_row("overall", block.get("overall"), indent=6))
@@ -116,42 +127,53 @@ def build_report(summary: dict) -> str:
     #    CD×trusted       — authorized instruction following
     #    CD×untrusted     — classic confused deputy / privilege escalation
     #
-    _COND_ORDER = {"with": 0, "implicit_r": 1, "without": 2}
-    _COND_LABEL = {"with": "full_provenance", "implicit_r": "implicit_R", "without": "channel_only"}
+    _COND_ORDER = {"bare": 0, "labels_unbound": 1, "labels": 2, "capabilities": 3, "full": 4}
+    _COND_LABEL = {"bare": "bare", "labels_unbound": "labels_unbound", "labels": "labels",
+                   "capabilities": "capabilities", "full": "full"}
     _TYPE_LABEL = {"indirect_injection": "IPI", "confused_deputy": "Confused Deputy"}
-    present_conds = sorted({r.get("provenance", "with") for r in results},
+    _VARIANT_ORDER  = {"trusted": 0, "untrusted": 1, "untrusted_inline_spoof": 2}
+    _VARIANT_HEADER = {"trusted":                ("Authorized",    "(trusted)"),
+                       "untrusted":              ("Unauthorized",  "(untrusted)"),
+                       "untrusted_inline_spoof": ("Inline-spoof",  "(tag forgery)")}
+    present_conds = sorted({r.get("condition", "bare") for r in results},
                            key=lambda c: _COND_ORDER.get(c, 99))
+    present_vars  = sorted({r.get("variant") for r in results if r.get("variant")},
+                           key=lambda v: _VARIANT_ORDER.get(v, 99))
+
     if results:
         lines.append("  Attack type × Authorization  (pass rate = correct outcome):")
-        lines.append(f"  {'':34} {'Authorized':>16}   {'Unauthorized':>16}")
-        lines.append(f"  {'':34} {'(trusted)':>16}   {'(untrusted)':>16}")
+        col_w = 16
+        h1 = "".join(f" {_VARIANT_HEADER.get(v, (v, ''))[0]:>{col_w}} " for v in present_vars)
+        h2 = "".join(f" {_VARIANT_HEADER.get(v, ('', v))[1]:>{col_w}} " for v in present_vars)
+        lines.append(f"  {'':34}{h1}")
+        lines.append(f"  {'':34}{h2}")
         for cond in present_conds:
-            label = _COND_LABEL.get(cond, cond)
-            lines.append(f"  {label}:")
+            lines.append(f"  {_COND_LABEL.get(cond, cond)}:")
             for atype in ["indirect_injection", "confused_deputy"]:
-                row = []
-                for variant in ["trusted", "untrusted"]:
+                row_cells = []
+                for variant in present_vars:
                     cell = [r for r in results
-                            if r.get("provenance") == cond
+                            if r.get("condition") == cond
                             and r["type"] == atype
                             and r["variant"] == variant]
                     if cell:
                         p = sum(1 for r in cell if r["passed"])
-                        row.append(f"{p}/{len(cell)} ({p/len(cell):.0%})")
+                        row_cells.append(f"{p}/{len(cell)} ({p/len(cell):.0%})")
                     else:
-                        row.append("—")
+                        row_cells.append("—")
                 tlabel = _TYPE_LABEL.get(atype, atype)
-                lines.append(f"    {tlabel:<32} {row[0]:>16}   {row[1]:>16}")
+                cells_str = "".join(f" {c:>{col_w}} " for c in row_cells)
+                lines.append(f"    {tlabel:<32}{cells_str}")
         lines.append("")
 
-    # ── pass rate by provenance ──────────────────────────────────────────────
-    by_prov = summary.get("by_provenance", {})
-    if by_prov:
+    # ── pass rate by condition ───────────────────────────────────────────────
+    by_cond = summary.get("by_condition", {})
+    if by_cond:
         lines.append("  Pass rate by condition (aggregate):")
         for cond in present_conds:
-            if cond not in by_prov:
+            if cond not in by_cond:
                 continue
-            stats = by_prov[cond]
+            stats = by_cond[cond]
             lines.append(f"    {_COND_LABEL.get(cond, cond):<18}  {stats['passed']}/{stats['total']}  "
                          f"({stats['pass_rate']:.1%})")
         lines.append("")
@@ -161,7 +183,7 @@ def build_report(summary: dict) -> str:
     for r in results:
         boundary_totals.setdefault(r["boundary_type"], []).append(r["passed"])
     if boundary_totals:
-        lines.append("  Pass rate by boundary type (all provenance conditions):")
+        lines.append("  Pass rate by boundary type (all conditions pooled):")
         for bt in sorted(boundary_totals):
             ps = boundary_totals[bt]
             lines.append(f"    {bt:<24}  {sum(ps)}/{len(ps)}  ({sum(ps)/len(ps):.1%})")
@@ -175,17 +197,22 @@ def build_report(summary: dict) -> str:
 
     # ── per-row results table ────────────────────────────────────────────────
     lines.append(_w(W))
-    lines.append(f"  {'Scenario':<32} {'Type':<22} {'Boundary':<22} "
-                 f"{'Variant':<10} {'Prov':<8} {'Expected':<14} {'Actual':<14} Result")
+    lines.append(f"  {'Scenario':<36} {'Type':<22} {'Boundary':<22} "
+                 f"{'Variant':<16} {'Cond':<12} {'Expected':<14} {'Actual':<14} Result")
     lines.append(f"  {_w(W)}")
-    _COND_ABBREV = {"with": "full", "without": "none", "implicit_r": "impl_R"}
-    for r in sorted(results, key=lambda x: (x.get("provenance") or "", x["type"], x["scenario"])):
-        mark  = "PASS \u2713" if r["passed"] else "FAIL \u2717"
-        cond  = r.get("provenance") or "with"
-        clabel = _COND_ABBREV.get(cond, cond[:6])
+    _COND_ABBREV = {"bare": "bare", "labels_unbound": "lbl_unbnd", "labels": "labels",
+                    "capabilities": "caps", "full": "full"}
+    _key = lambda x: (_COND_ORDER.get(x.get("condition") or "bare", 99),
+                      x["type"],
+                      _VARIANT_ORDER.get(x.get("variant") or "", 99),
+                      x["scenario"])
+    for r in sorted(results, key=_key):
+        mark   = "PASS \u2713" if r["passed"] else "FAIL \u2717"
+        cond   = r.get("condition") or "bare"
+        clabel = _COND_ABBREV.get(cond, cond[:10])
         lines.append(
-            f"  {r['scenario']:<32} {r['type']:<22} {r['boundary_type']:<22} "
-            f"{r['variant']:<10} {clabel:<8} {r['expected']:<14} {r['actual']:<14} {mark}"
+            f"  {r['scenario']:<36} {r['type']:<22} {r['boundary_type']:<22} "
+            f"{r['variant']:<16} {clabel:<12} {r['expected']:<14} {r['actual']:<14} {mark}"
         )
     lines.append(f"  {_w(W)}")
     lines.append("")
@@ -193,9 +220,9 @@ def build_report(summary: dict) -> str:
     # ── evidence (detail strings) ────────────────────────────────────────────
     lines.append("  Evidence (model output per scenario):")
     lines.append(f"  {_w(W)}")
-    for r in sorted(results, key=lambda x: (x.get("provenance") or "", x["type"], x["scenario"])):
+    for r in sorted(results, key=_key):
         status = "PASS" if r["passed"] else "FAIL"
-        cond   = r.get("provenance") or "with"
+        cond   = r.get("condition") or "bare"
         lines.append(f"  [{r['scenario']} | {r['variant']} | {cond} | {status}]")
         detail = (r.get("detail") or "").strip()
         if detail:
