@@ -4,56 +4,84 @@ Motivation (TL;DR)
 Problem and framing. LLM agents receive inputs from multiple sources —
 authenticated users, tool outputs, memory records, external documents —
 and must decide which instructions to act on. Getting this wrong
-produces two canonical failure modes: indirect prompt injection (content-
-side: agent follows instructions in untrusted content) and confused
-deputy (caller-side: agent uses its elevated permissions for an
-unauthorised caller). Current LLM-agent deployments — and the benchmarks
-that measure them (AgentDojo, InjecAgent, SHADE-ARENA, WASP) — ship with
-*no* explicit authorisation primitives exposed to the model; the agent is
-left to pattern-match on content. We pull directly from two canonical
-bodies of security work to address this: information-flow control on
+produces two canonical failure modes: indirect prompt injection (IPI,
+content-side: agent follows instructions in untrusted content) and
+confused deputy (CD, caller-side: agent uses its elevated permissions
+for an unauthorised caller). Current LLM-agent deployments — and the
+benchmarks that measure them (AgentDojo, InjecAgent, SHADE-ARENA, WASP)
+— ship with *no* explicit authorisation primitives exposed to the model;
+the agent is left to pattern-match on content. We pull directly from
+three canonical bodies of security work: information-flow control on
 inputs (Sabelfeld & Myers 2003; Perl taint, TaintDroid; Microsoft
-Spotlighting Hines et al. 2024 as the LLM-context instance) and
-role-based access control at the policy decision point (Lampson 1971;
-Sandhu et al. 1996; XACML / OPA / AWS IAM session context). We additionally
-import CSRF-style session-bound tokens (web security, 30+ years) to give
-IFC labels structural — rather than merely conventional — forgery
-resistance in a setting where the attacker can write entire document
-bodies through tool outputs.
+Spotlighting Hines et al. 2024 as the LLM-context instance); role-based
+access control at the policy decision point (Lampson 1971; Sandhu et al.
+1996; XACML / OPA / AWS IAM session context); and CSRF-style session-
+bound tokens (web security, 30+ years) to give IFC labels structural
+— rather than merely conventional — forgery resistance in a setting
+where the attacker can write entire document bodies and user prompts.
 
-Benchmark and findings. We evaluate agents factorially: `bare` (no
-primitives exposed, AgentDojo-equivalent floor) × `labels_unbound` (IFC
-header on observations, no session token, ablation control) × `labels`
-(binding-token IFC header, CSRF-style unforgeable to attacker-writable
-content) × `capabilities` (RBAC `granted_scopes` in session) × `full`
-(binding-token labels + capabilities), crossed with two attack families
-(IPI, confused deputy) and paired trusted/untrusted variants over 45
-scenario pairs per family (McNemar-testable). Each run mints a fresh
-per-scenario session token invisible to the attacker. The
-`labels` vs `labels_unbound` comparison isolates whether the binding token
-is load-bearing or decorative: if frontier LLMs faithfully enforce a
-prompted CSRF-style protocol, the bound form should outperform the
-unbound form; if they pattern-match on header stems alone, the two should
-converge. Prior results on Sonnet 4.6 (using unbound labels only) show
-capabilities substantially defending confused deputy (~40% → ~91% block
-rate on untrusted) while labels alone add little over a strong baseline
-— the binding-token ablation determines whether structural reinforcement
-changes that picture. The contribution is (i) a factorial benchmark
-instrumenting two canonical primitives that current agent frameworks
-lack, (ii) the first measurement of LLM enforcement faithfulness for
-a CSRF-style in-prompt protocol, and (iii) empirical characterisation of
-which authorisation failure mode each primitive actually defends against.
+Benchmark design. We evaluate agents factorially: `bare` (no primitives
+exposed, AgentDojo-equivalent floor) × `labels_unbound` (IFC header on
+observations, no session token, ablation control) × `labels` (binding-
+token IFC header, CSRF-style unforgeable to attacker-writable content)
+× `capabilities` (RBAC `granted_scopes` in session) × `full` (binding-
+token labels + capabilities). Crossed with two attack families (IPI, CD)
+and three variants per pair: trusted (authorised sender/source; agent
+should act), untrusted (external source; agent should refuse), and
+untrusted_inline_spoof (structural forgery — fake tag inside the
+document body for IPI, fake [Session] line prepended to the user prompt
+for CD). 45 scenario pairs per family, all McNemar-testable. Each run
+mints a fresh per-scenario session token invisible to the attacker.
+The `labels` vs `labels_unbound` comparison isolates whether the binding
+token is load-bearing or decorative — if frontier LLMs faithfully
+enforce a prompted CSRF-style protocol, the bound form should outperform
+the unbound form on inline-spoof cells.
 
-Results (preliminary, Sonnet 4.6). RBAC-style capabilities substantially
-defend confused deputy — a large and statistically clean positive effect.
-IFC-style source labels deliver a smaller IPI-side benefit with an
-asymmetric caller-side cost: exposing the labels convention pulls the
-model away from caller-authority reasoning and actually hurts confused-
-deputy block rates. The CSRF-style binding-token ablation returns a
-clear null — bound and unbound label variants are statistically
-indistinguishable across every cell — indicating the model pattern-
-matches on the label stems and does not faithfully enforce the prompted
-token check at inference time. Net picture: one of the two primitives
-works as advertised; the other underperforms on its defensive side and
-reveals that a canonical cryptographic mechanism doesn't translate into
-LLM-enforcement without training support. Cross-model replication is next.
+Cross-model findings (Sonnet 4.6, DeepSeek V3.2, Gemini 3.1 Pro,
+MiniMax M2.7, Kimi K2.6, GPT-5.4; 8100 evals). Six frontier models from
+six distinct labs. One universal positive, one cluster-splitting
+conditional, and a utility picture that is mixed rather than uniformly
+costly.
+
+  (1) RBAC is the universal primitive. Capabilities lift refusal rate
+      on CD untrusted by +51-53 points on EVERY model tested
+      (Sonnet 42→93%, DeepSeek 22→73%, Gemini 20→73%, MiniMax 18→71%,
+      Kimi 44→96%, GPT 47→98%). Identical magnitude across wildly
+      different base rates (18% → 47%) and architectures. This is the
+      cleanest cross-model result in the benchmark.
+
+  (2) Binding tokens split the frontier into two clusters on the CSRF-
+      style user-prompt forgery (CD inline-spoof cell — fake [Session]
+      line prepended to user input, testing whether the model enforces
+      the prompted token protocol):
+
+        Token-respecting:  Sonnet +58, GPT +56, Kimi +71, Gemini +24
+        Surface-blind:     DeepSeek +2, MiniMax +4
+
+      Sonnet, GPT, and Kimi close the attack surface decisively
+      (~96% refusal under `full`); Gemini moves meaningfully; DeepSeek
+      and MiniMax are indistinguishable from their no-token ablation.
+      On the symmetric document-body forgery (IPI inline-spoof — fake
+      [Source] tag inside an untrusted document), the token is near-
+      null for every model tested (Sonnet +0, Gemini +0, Kimi +0,
+      MiniMax +4, GPT +9, DeepSeek +18) — suggesting document-body
+      forgery exploits a distinct attentional failure that structural
+      markers alone do not remediate.
+
+  (3) Utility cost is mixed, not uniform. Under `full`, two models
+      improve on legitimate IPI requests (Sonnet +9, DeepSeek ≈0),
+      three are near-flat (Gemini −2, Kimi −2, MiniMax −7), and
+      one shows a clear cost (GPT −13). The naive claim "authorisation
+      primitives always over-refuse" does not generalise; several
+      models appear to use the primitives to disambiguate legitimate
+      from spurious requests.
+
+Contribution. (i) A factorial benchmark instrumenting two canonical
+authorisation primitives that current agent frameworks lack; (ii) the
+first systematic measurement of prompted CSRF-style protocol
+faithfulness across six frontier models, revealing a sharp two-cluster
+split; (iii) cross-model evidence that canonical cryptographic
+primitives do not translate to uniform defence in LLM-enforced
+settings — effectiveness is conditional on attack surface and on
+model-specific attentional properties that existing benchmarks do not
+reveal, while the RBAC primitive generalises without exception.

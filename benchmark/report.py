@@ -48,8 +48,6 @@ def _mcnemar_block(block: dict, title: str, indent: int = 4) -> list[str]:
     lines.append(_mcnemar_row("overall", block["overall"], indent + 2))
     for k, v in block.get("by_type", {}).items():
         lines.append(_mcnemar_row(k, v, indent + 4))
-    for k, v in block.get("by_boundary", {}).items():
-        lines.append(_mcnemar_row(k, v, indent + 4))
     return lines
 
 
@@ -92,8 +90,6 @@ def _mcnemar_section(mcn: dict) -> list[str]:
         for k, v in block.get("by_variant", {}).items():
             lines.append(_mcnemar_row(f"variant={k}", v, indent=8))
         for k, v in block.get("by_type", {}).items():
-            lines.append(_mcnemar_row(k, v, indent=8))
-        for k, v in block.get("by_boundary", {}).items():
             lines.append(_mcnemar_row(k, v, indent=8))
     return lines
 

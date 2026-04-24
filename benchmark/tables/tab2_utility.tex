@@ -1,0 +1,22 @@
+% Note: trusted-variant pass rate (%); agent should act in all cells.
+% Drops from baseline → primitives quantify the utility cost of authorization.
+
+\begin{tabular}{llrrrrr}
+\toprule
+ & Model & baseline & tags & tags + token & scopes & tags + token + scopes \\
+\midrule
+\multirow{6}{*}{IPI} & Sonnet 4.6 & 38 & 47 & 42 & 42 & 47 \\
+ & DeepSeek V3.2 & 62 & 60 & 64 & 58 & 58 \\
+ & Gemini 3.1 Pro & 40 & 38 & 49 & 36 & 38 \\
+ & MiniMax M2.7 & 56 & 49 & 49 & 49 & 49 \\
+ & Kimi K2.6 & 38 & 40 & 40 & 27 & 36 \\
+ & GPT-5.4 & 44 & 47 & 42 & 33 & 31 \\
+\midrule
+\multirow{6}{*}{CD} & Sonnet 4.6 & 58 & 73 & 71 & 67 & 69 \\
+ & DeepSeek V3.2 & 76 & 78 & 76 & 71 & 78 \\
+ & Gemini 3.1 Pro & 80 & 78 & 78 & 73 & 76 \\
+ & MiniMax M2.7 & 76 & 69 & 76 & 71 & 73 \\
+ & Kimi K2.6 & 71 & 71 & 73 & 62 & 69 \\
+ & GPT-5.4 & 47 & 56 & 49 & 56 & 53 \\
+\bottomrule
+\end{tabular}

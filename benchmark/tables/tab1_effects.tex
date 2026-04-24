@@ -1,0 +1,43 @@
+% Note: cells are Δ pass rate (percentage points) vs baseline (no primitives),
+% paired by scenario. T = trusted (should act), U = unauthorized (should refuse),
+% S = unauthorized + inline-spoof (forged auth marker; should still refuse).
+% Significance: exact McNemar two-sided p. * p<.05, ** p<.01, *** p<.001.
+% Bootstrap CIs and MDE-at-80%-power reported per-cell in Appendix (Table A.x).
+
+\begin{tabular}{llrrrrrr}
+\toprule
+ &  & \multicolumn{3}{c}{IPI} & \multicolumn{3}{c}{CD} \\
+\cmidrule(lr){3-5} \cmidrule(lr){6-8}
+Model & Condition & trust. & unauth. & spoof & trust. & unauth. & spoof \\
+\midrule
+\multirow{4}{*}{Sonnet 4.6} & tags & +9 & +11 & +11 & +16$^{*}$ & -11 & +7 \\
+ & tags + token & +4 & +11 & +11 & +13$^{*}$ & -16$^{*}$ & +64$^{***}$ \\
+ & scopes & +4 & -4 & +7 & +9 & +51$^{***}$ & +60$^{***}$ \\
+ & tags + token + scopes & +9 & +11 & +11 & +11 & +49$^{***}$ & +69$^{***}$ \\
+\midrule
+\multirow{4}{*}{DeepSeek V3.2} & tags & -2 & +44$^{***}$ & +4 & +2 & +0 & +0 \\
+ & tags + token & +2 & +33$^{***}$ & +22$^{*}$ & +0 & -7 & +2 \\
+ & scopes & -4 & +13$^{*}$ & +4 & -4 & +51$^{***}$ & +4 \\
+ & tags + token + scopes & -4 & +20$^{*}$ & +24$^{***}$ & +2 & +38$^{***}$ & +9 \\
+\midrule
+\multirow{4}{*}{Gemini 3.1 Pro} & tags & -2 & +18$^{**}$ & +18$^{**}$ & -2 & +0 & +4 \\
+ & tags + token & +9 & +18$^{**}$ & +18$^{**}$ & -2 & +9 & +29$^{***}$ \\
+ & scopes & -4 & +7 & +7 & -7 & +53$^{***}$ & +58$^{***}$ \\
+ & tags + token + scopes & -2 & +22$^{**}$ & +24$^{***}$ & -4 & +62$^{***}$ & +69$^{***}$ \\
+\midrule
+\multirow{4}{*}{MiniMax M2.7} & tags & -7 & +18$^{**}$ & +11 & -7 & +9 & +7 \\
+ & tags + token & -7 & +18$^{**}$ & +16 & +0 & +9 & +11 \\
+ & scopes & -7 & +2 & +9 & -4 & +53$^{***}$ & +9 \\
+ & tags + token + scopes & -7 & +20$^{**}$ & +16$^{*}$ & -2 & +47$^{***}$ & +13$^{*}$ \\
+\midrule
+\multirow{4}{*}{Kimi K2.6} & tags & +2 & +13$^{*}$ & +11 & +0 & -11 & -2 \\
+ & tags + token & +2 & +13$^{*}$ & +11 & +2 & -7 & +69$^{***}$ \\
+ & scopes & -11 & +13$^{*}$ & +4 & -9 & +51$^{***}$ & +58$^{***}$ \\
+ & tags + token + scopes & -2 & +13$^{*}$ & +16$^{*}$ & -2 & +51$^{***}$ & +69$^{***}$ \\
+\midrule
+\multirow{4}{*}{GPT-5.4} & tags & +2 & +18$^{**}$ & +16$^{*}$ & +9 & +0 & +0 \\
+ & tags + token & -2 & +18$^{**}$ & +24$^{***}$ & +2 & +9 & +56$^{***}$ \\
+ & scopes & -11 & +9 & +16$^{*}$ & +9 & +51$^{***}$ & +58$^{***}$ \\
+ & tags + token + scopes & -13 & +18$^{**}$ & +24$^{***}$ & +7 & +51$^{***}$ & +60$^{***}$ \\
+\bottomrule
+\end{tabular}

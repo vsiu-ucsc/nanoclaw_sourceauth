@@ -63,8 +63,10 @@ import argparse
 import datetime
 import json
 import os
+import random
 import sys
 import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
@@ -379,8 +381,56 @@ def make_client(model: str, api_key: str | None, base_url: str | None):
         )
 
 
+_RETRY_STATUSES = {429, 500, 502, 503, 504}
+_RETRY_MAX      = 8       # up to ~5 min of backoff total
+_RETRY_BASE     = 2.0     # seconds
+_RETRY_CAP      = 60.0    # single-sleep cap
+
+
+def _is_retryable(exc: Exception) -> tuple[bool, float | None]:
+    """(is_retryable, suggested_delay_from_retry_after_header)."""
+    status = getattr(exc, "status_code", None) or getattr(exc, "status", None)
+    msg    = str(exc)
+    if status in _RETRY_STATUSES:
+        pass
+    elif "429" in msg or "rate limit" in msg.lower() or "overloaded" in msg.lower():
+        status = 429
+    elif any(code in msg for code in ("500", "502", "503", "504")):
+        status = 500
+    else:
+        return False, None
+
+    # Honor Retry-After when available (OpenAI / Anthropic both surface it)
+    ra = None
+    resp = getattr(exc, "response", None)
+    try:
+        if resp is not None:
+            headers = getattr(resp, "headers", None)
+            if headers:
+                raw = headers.get("retry-after") or headers.get("Retry-After")
+                if raw: ra = float(raw)
+    except Exception:
+        ra = None
+    return True, ra
+
+
 def _call(backend, client, model: str, system: str,
           messages: list[dict], tools: list[dict]) -> Turn:
+    for attempt in range(_RETRY_MAX + 1):
+        try:
+            return _call_once(backend, client, model, system, messages, tools)
+        except Exception as e:
+            retry, ra = _is_retryable(e)
+            if not retry or attempt == _RETRY_MAX:
+                raise
+            delay = min(_RETRY_CAP, _RETRY_BASE * (2 ** attempt)) + random.uniform(0, 1)
+            if ra is not None:
+                delay = max(delay, ra)
+            time.sleep(delay)
+
+
+def _call_once(backend, client, model: str, system: str,
+               messages: list[dict], tools: list[dict]) -> Turn:
     if backend == "anthropic":
         resp = client.messages.create(
             model=model, max_tokens=1024,
@@ -407,6 +457,31 @@ def _call(backend, client, model: str, system: str,
         return Turn(tcs, msg.content or "", raw=msg)
 
 
+_TOOL_ACK = {
+    "send_email":    "Email sent.",
+    "send_message":  "Message posted.",
+    "http_post":     "HTTP 200 OK.",
+    "http_get":      "HTTP 200 OK.",
+    "write_file":    "File written.",
+}
+
+
+def _default_tool_result(tc) -> str:
+    """
+    POSIX-shaped fallback for an unscripted tool call.
+
+    Realism matters: a filesystem NEVER returns literal 'OK' to a read — it
+    returns content, or 'No such file or directory'. Treating unscripted
+    reads as not-found matches deployment semantics and prevents probing
+    models from stalling on an ambiguous 'OK' (which some models interpret
+    as "empty file, task impossible").
+    """
+    if tc.name == "read_file":
+        path = (tc.input or {}).get("path", "")
+        return f"ERROR: No such file or directory: {path!r}"
+    return _TOOL_ACK.get(tc.name, "OK")
+
+
 def _tool_result_messages(backend, prior: list[dict],
                           turn: Turn, result_text: str | None,
                           content_map: dict | None = None) -> list[dict]:
@@ -414,8 +489,9 @@ def _tool_result_messages(backend, prior: list[dict],
     Append assistant turn + tool results.
 
     content_map: {tool_use_id: content} — served verbatim for those IDs.
-    result_text: fallback for the first unoverridden read_file call (pass None to skip).
-    All remaining tool calls get 'OK'.
+    result_text: override for the first unoverridden read_file call (pass
+    None to skip). All other unscripted calls get a realistic, tool-shaped
+    default (see _default_tool_result).
     """
     content_map = content_map or {}
     if backend == "anthropic":
@@ -438,7 +514,7 @@ def _tool_result_messages(backend, prior: list[dict],
                 content = result_text
                 read_served = True
             else:
-                content = "OK"
+                content = _default_tool_result(tc)
             tool_results.append({"type": "tool_result", "tool_use_id": tc.id, "content": content})
 
         return prior + [
@@ -468,7 +544,7 @@ def _tool_result_messages(backend, prior: list[dict],
                 content = result_text
                 read_served = True
             else:
-                content = "OK"
+                content = _default_tool_result(tc)
             tool_msgs.append({"role": "tool", "tool_call_id": tc.id, "content": content})
 
         return prior + [assistant_msg] + tool_msgs
@@ -667,8 +743,14 @@ def run_one(backend, client, model: str,
                 break
             cmap, _ = _build_cmap(t, None, True)
             if tc_target and target_tool == "read_file":
-                cmap[tc_target.id] = f"[File: {scenario['target_resource']}]\n(file contents)"
-            msgs = _tool_result_messages(backend, msgs, t, "OK", content_map=cmap)
+                # Stub representing a successful read of the target resource.
+                # The CD target-call is already logged as tool_called; this
+                # stub is only used for the follow-up turn's decorative reply.
+                cmap[tc_target.id] = (
+                    f"[contents of {scenario['target_resource']} — "
+                    f"elided for test harness]"
+                )
+            msgs = _tool_result_messages(backend, msgs, t, None, content_map=cmap)
             if tc_target:
                 if target_tool == "read_file":
                     t2     = _call(backend, client, model, system, msgs, TOOLS)
@@ -785,15 +867,12 @@ def _mcnemar(results: list[dict]) -> dict:
         return pairs
 
     def _var_block(records, variant_a: str, variant_b: str):
-        boundaries = sorted({r["boundary_type"] for r in records})
         return {
             "overall":     _mcnemar_stat(_var_pairs(records, variant_a, variant_b)),
             "by_type": {
                 "indirect_injection": _mcnemar_stat(_var_pairs(records, variant_a, variant_b, type_f="indirect_injection")),
                 "confused_deputy":    _mcnemar_stat(_var_pairs(records, variant_a, variant_b, type_f="confused_deputy")),
             },
-            "by_boundary": {bt: _mcnemar_stat(_var_pairs(records, variant_a, variant_b, boundary_f=bt))
-                            for bt in boundaries},
         }
 
     present_conds = sorted({r["condition"] for r in results},
@@ -832,19 +911,17 @@ def _mcnemar(results: list[dict]) -> dict:
         return pairs
 
     def _cond_block(cond_a: str, cond_b: str) -> dict:
-        boundaries = sorted({r["boundary_type"] for r in results})
         return {
             "overall": _mcnemar_stat(_cond_pairs(cond_a, cond_b)),
             "by_variant": {
-                "trusted":   _mcnemar_stat(_cond_pairs(cond_a, cond_b, variant_f="trusted")),
-                "untrusted": _mcnemar_stat(_cond_pairs(cond_a, cond_b, variant_f="untrusted")),
+                "trusted":                _mcnemar_stat(_cond_pairs(cond_a, cond_b, variant_f="trusted")),
+                "untrusted":              _mcnemar_stat(_cond_pairs(cond_a, cond_b, variant_f="untrusted")),
+                "untrusted_inline_spoof": _mcnemar_stat(_cond_pairs(cond_a, cond_b, variant_f="untrusted_inline_spoof")),
             },
             "by_type": {
                 "indirect_injection": _mcnemar_stat(_cond_pairs(cond_a, cond_b, type_f="indirect_injection")),
                 "confused_deputy":    _mcnemar_stat(_cond_pairs(cond_a, cond_b, type_f="confused_deputy")),
             },
-            "by_boundary": {bt: _mcnemar_stat(_cond_pairs(cond_a, cond_b, boundary_f=bt))
-                            for bt in boundaries},
         }
 
     cond_effect: dict = {}
@@ -884,8 +961,6 @@ def _print_mcnemar(mcn: dict):
         _row("overall", block["overall"], indent + 2)
         for k, v in block.get("by_type", {}).items():
             _row(k, v, indent + 4)
-        for k, v in block.get("by_boundary", {}).items():
-            _row(k, v, indent + 4)
 
     var_cmp = mcn["variant_comparison"]
     cond    = mcn["condition_effect"]
@@ -916,8 +991,6 @@ def _print_mcnemar(mcn: dict):
         for k, v in block.get("by_variant", {}).items():
             _row(f"variant={k}", v, indent=8)
         for k, v in block.get("by_type", {}).items():
-            _row(k, v, indent=8)
-        for k, v in block.get("by_boundary", {}).items():
             _row(k, v, indent=8)
     print()
 

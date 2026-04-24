@@ -1,0 +1,150 @@
+\begin{tabular}{llllllrrr}
+\toprule
+Model & Condition & Attack & Variant & $n_d$ & $n_{10}$ & $n_{01}$ & $\delta$ (pp) & MDE (pp, 80\%) & $p$ \\
+\midrule
+Sonnet 4.6 & tags & IPI & trust. & 4 & 4 & 0 & +8.9 & -- & 0.125 \\
+Sonnet 4.6 & tags & IPI & unauth. & 5 & 5 & 0 & +11.1 & -- & 0.0625 \\
+Sonnet 4.6 & tags & IPI & spoof & 5 & 5 & 0 & +11.1 & -- & 0.0625 \\
+Sonnet 4.6 & tags & CD & trust. & 7 & 7 & 0 & +15.6 & 93.8 & 0.0156 \\
+Sonnet 4.6 & tags & CD & unauth. & 7 & 1 & 6 & -11.1 & 93.8 & 0.125 \\
+Sonnet 4.6 & tags & CD & spoof & 5 & 4 & 1 & +6.7 & -- & 0.375 \\
+Sonnet 4.6 & tags + token & IPI & trust. & 4 & 3 & 1 & +4.4 & -- & 0.625 \\
+Sonnet 4.6 & tags + token & IPI & unauth. & 5 & 5 & 0 & +11.1 & -- & 0.0625 \\
+Sonnet 4.6 & tags + token & IPI & spoof & 5 & 5 & 0 & +11.1 & -- & 0.0625 \\
+Sonnet 4.6 & tags + token & CD & trust. & 6 & 6 & 0 & +13.3 & 92.8 & 0.0312 \\
+Sonnet 4.6 & tags + token & CD & unauth. & 7 & 0 & 7 & -15.6 & 93.8 & 0.0156 \\
+Sonnet 4.6 & tags + token & CD & spoof & 29 & 29 & 0 & +64.4 & 54.4 & 3.73e-09 \\
+Sonnet 4.6 & scopes & IPI & trust. & 4 & 3 & 1 & +4.4 & -- & 0.625 \\
+Sonnet 4.6 & scopes & IPI & unauth. & 2 & 0 & 2 & -4.4 & -- & 0.5 \\
+Sonnet 4.6 & scopes & IPI & spoof & 3 & 3 & 0 & +6.7 & -- & 0.25 \\
+Sonnet 4.6 & scopes & CD & trust. & 8 & 6 & 2 & +8.9 & 94.6 & 0.289 \\
+Sonnet 4.6 & scopes & CD & unauth. & 23 & 23 & 0 & +51.1 & 57.6 & 2.38e-07 \\
+Sonnet 4.6 & scopes & CD & spoof & 27 & 27 & 0 & +60.0 & 57.6 & 1.49e-08 \\
+Sonnet 4.6 & tags + token + scopes & IPI & trust. & 4 & 4 & 0 & +8.9 & -- & 0.125 \\
+Sonnet 4.6 & tags + token + scopes & IPI & unauth. & 5 & 5 & 0 & +11.1 & -- & 0.0625 \\
+Sonnet 4.6 & tags + token + scopes & IPI & spoof & 5 & 5 & 0 & +11.1 & -- & 0.0625 \\
+Sonnet 4.6 & tags + token + scopes & CD & trust. & 9 & 7 & 2 & +11.1 & 81.6 & 0.18 \\
+Sonnet 4.6 & tags + token + scopes & CD & unauth. & 22 & 22 & 0 & +48.9 & 63.6 & 4.77e-07 \\
+Sonnet 4.6 & tags + token + scopes & CD & spoof & 31 & 31 & 0 & +68.9 & 51.6 & 9.31e-10 \\
+DeepSeek V3.2 & tags & IPI & trust. & 7 & 3 & 4 & -2.2 & 93.8 & 1 \\
+DeepSeek V3.2 & tags & IPI & unauth. & 20 & 20 & 0 & +44.4 & 59.8 & 1.91e-06 \\
+DeepSeek V3.2 & tags & IPI & spoof & 4 & 3 & 1 & +4.4 & -- & 0.625 \\
+DeepSeek V3.2 & tags & CD & trust. & 3 & 2 & 1 & +2.2 & -- & 1 \\
+DeepSeek V3.2 & tags & CD & unauth. & 6 & 3 & 3 & +0.0 & 92.8 & 1 \\
+DeepSeek V3.2 & tags & CD & spoof & 8 & 4 & 4 & +0.0 & 94.6 & 1 \\
+DeepSeek V3.2 & tags + token & IPI & trust. & 7 & 4 & 3 & +2.2 & 93.8 & 1 \\
+DeepSeek V3.2 & tags + token & IPI & unauth. & 17 & 16 & 1 & +33.3 & 62.6 & 0.000275 \\
+DeepSeek V3.2 & tags + token & IPI & spoof & 14 & 12 & 2 & +22.2 & 77.8 & 0.0129 \\
+DeepSeek V3.2 & tags + token & CD & trust. & 8 & 4 & 4 & +0.0 & 94.6 & 1 \\
+DeepSeek V3.2 & tags + token & CD & unauth. & 7 & 2 & 5 & -6.7 & 93.8 & 0.453 \\
+DeepSeek V3.2 & tags + token & CD & spoof & 7 & 4 & 3 & +2.2 & 93.8 & 1 \\
+DeepSeek V3.2 & scopes & IPI & trust. & 4 & 1 & 3 & -4.4 & -- & 0.625 \\
+DeepSeek V3.2 & scopes & IPI & unauth. & 6 & 6 & 0 & +13.3 & 92.8 & 0.0312 \\
+DeepSeek V3.2 & scopes & IPI & spoof & 4 & 3 & 1 & +4.4 & -- & 0.625 \\
+DeepSeek V3.2 & scopes & CD & trust. & 6 & 2 & 4 & -4.4 & 92.8 & 0.688 \\
+DeepSeek V3.2 & scopes & CD & unauth. & 23 & 23 & 0 & +51.1 & 57.6 & 2.38e-07 \\
+DeepSeek V3.2 & scopes & CD & spoof & 6 & 4 & 2 & +4.4 & 92.8 & 0.688 \\
+DeepSeek V3.2 & tags + token + scopes & IPI & trust. & 4 & 1 & 3 & -4.4 & -- & 0.625 \\
+DeepSeek V3.2 & tags + token + scopes & IPI & unauth. & 15 & 12 & 3 & +20.0 & 68.6 & 0.0352 \\
+DeepSeek V3.2 & tags + token + scopes & IPI & spoof & 11 & 11 & 0 & +24.4 & 85.0 & 0.000977 \\
+DeepSeek V3.2 & tags + token + scopes & CD & trust. & 3 & 2 & 1 & +2.2 & -- & 1 \\
+DeepSeek V3.2 & tags + token + scopes & CD & unauth. & 19 & 18 & 1 & +37.8 & 66.8 & 7.63e-05 \\
+DeepSeek V3.2 & tags + token + scopes & CD & spoof & 10 & 7 & 3 & +8.9 & 83.4 & 0.344 \\
+Gemini 3.1 Pro & tags & IPI & trust. & 5 & 2 & 3 & -2.2 & -- & 1 \\
+Gemini 3.1 Pro & tags & IPI & unauth. & 8 & 8 & 0 & +17.8 & 94.6 & 0.00781 \\
+Gemini 3.1 Pro & tags & IPI & spoof & 8 & 8 & 0 & +17.8 & 94.6 & 0.00781 \\
+Gemini 3.1 Pro & tags & CD & trust. & 1 & 0 & 1 & -2.2 & -- & 1 \\
+Gemini 3.1 Pro & tags & CD & unauth. & 0 & 0 & 0 & +0.0 & -- & -- \\
+Gemini 3.1 Pro & tags & CD & spoof & 2 & 2 & 0 & +4.4 & -- & 0.5 \\
+Gemini 3.1 Pro & tags + token & IPI & trust. & 4 & 4 & 0 & +8.9 & -- & 0.125 \\
+Gemini 3.1 Pro & tags + token & IPI & unauth. & 8 & 8 & 0 & +17.8 & 94.6 & 0.00781 \\
+Gemini 3.1 Pro & tags + token & IPI & spoof & 8 & 8 & 0 & +17.8 & 94.6 & 0.00781 \\
+Gemini 3.1 Pro & tags + token & CD & trust. & 1 & 0 & 1 & -2.2 & -- & 1 \\
+Gemini 3.1 Pro & tags + token & CD & unauth. & 4 & 4 & 0 & +8.9 & -- & 0.125 \\
+Gemini 3.1 Pro & tags + token & CD & spoof & 13 & 13 & 0 & +28.9 & 76.0 & 0.000244 \\
+Gemini 3.1 Pro & scopes & IPI & trust. & 2 & 0 & 2 & -4.4 & -- & 0.5 \\
+Gemini 3.1 Pro & scopes & IPI & unauth. & 3 & 3 & 0 & +6.7 & -- & 0.25 \\
+Gemini 3.1 Pro & scopes & IPI & spoof & 3 & 3 & 0 & +6.7 & -- & 0.25 \\
+Gemini 3.1 Pro & scopes & CD & trust. & 3 & 0 & 3 & -6.7 & -- & 0.25 \\
+Gemini 3.1 Pro & scopes & CD & unauth. & 24 & 24 & 0 & +53.3 & 59.4 & 1.19e-07 \\
+Gemini 3.1 Pro & scopes & CD & spoof & 26 & 26 & 0 & +57.8 & 55.8 & 2.98e-08 \\
+Gemini 3.1 Pro & tags + token + scopes & IPI & trust. & 3 & 1 & 2 & -2.2 & -- & 1 \\
+Gemini 3.1 Pro & tags + token + scopes & IPI & unauth. & 10 & 10 & 0 & +22.2 & 83.4 & 0.00195 \\
+Gemini 3.1 Pro & tags + token + scopes & IPI & spoof & 11 & 11 & 0 & +24.4 & 85.0 & 0.000977 \\
+Gemini 3.1 Pro & tags + token + scopes & CD & trust. & 2 & 0 & 2 & -4.4 & -- & 0.5 \\
+Gemini 3.1 Pro & tags + token + scopes & CD & unauth. & 28 & 28 & 0 & +62.2 & 52.8 & 7.45e-09 \\
+Gemini 3.1 Pro & tags + token + scopes & CD & spoof & 31 & 31 & 0 & +68.9 & 51.6 & 9.31e-10 \\
+MiniMax M2.7 & tags & IPI & trust. & 11 & 4 & 7 & -6.7 & 85.0 & 0.549 \\
+MiniMax M2.7 & tags & IPI & unauth. & 8 & 8 & 0 & +17.8 & 94.6 & 0.00781 \\
+MiniMax M2.7 & tags & IPI & spoof & 7 & 6 & 1 & +11.1 & 93.8 & 0.125 \\
+MiniMax M2.7 & tags & CD & trust. & 7 & 2 & 5 & -6.7 & 93.8 & 0.453 \\
+MiniMax M2.7 & tags & CD & unauth. & 4 & 4 & 0 & +8.9 & -- & 0.125 \\
+MiniMax M2.7 & tags & CD & spoof & 3 & 3 & 0 & +6.7 & -- & 0.25 \\
+MiniMax M2.7 & tags + token & IPI & trust. & 7 & 2 & 5 & -6.7 & 93.8 & 0.453 \\
+MiniMax M2.7 & tags + token & IPI & unauth. & 8 & 8 & 0 & +17.8 & 94.6 & 0.00781 \\
+MiniMax M2.7 & tags + token & IPI & spoof & 11 & 9 & 2 & +15.6 & 85.0 & 0.0654 \\
+MiniMax M2.7 & tags + token & CD & trust. & 6 & 3 & 3 & +0.0 & 92.8 & 1 \\
+MiniMax M2.7 & tags + token & CD & unauth. & 6 & 5 & 1 & +8.9 & 92.8 & 0.219 \\
+MiniMax M2.7 & tags + token & CD & spoof & 7 & 6 & 1 & +11.1 & 93.8 & 0.125 \\
+MiniMax M2.7 & scopes & IPI & trust. & 7 & 2 & 5 & -6.7 & 93.8 & 0.453 \\
+MiniMax M2.7 & scopes & IPI & unauth. & 3 & 2 & 1 & +2.2 & -- & 1 \\
+MiniMax M2.7 & scopes & IPI & spoof & 6 & 5 & 1 & +8.9 & 92.8 & 0.219 \\
+MiniMax M2.7 & scopes & CD & trust. & 6 & 2 & 4 & -4.4 & 92.8 & 0.688 \\
+MiniMax M2.7 & scopes & CD & unauth. & 24 & 24 & 0 & +53.3 & 59.4 & 1.19e-07 \\
+MiniMax M2.7 & scopes & CD & spoof & 4 & 4 & 0 & +8.9 & -- & 0.125 \\
+MiniMax M2.7 & tags + token + scopes & IPI & trust. & 11 & 4 & 7 & -6.7 & 85.0 & 0.549 \\
+MiniMax M2.7 & tags + token + scopes & IPI & unauth. & 9 & 9 & 0 & +20.0 & 81.6 & 0.00391 \\
+MiniMax M2.7 & tags + token + scopes & IPI & spoof & 9 & 8 & 1 & +15.6 & 81.6 & 0.0391 \\
+MiniMax M2.7 & tags + token + scopes & CD & trust. & 5 & 2 & 3 & -2.2 & -- & 1 \\
+MiniMax M2.7 & tags + token + scopes & CD & unauth. & 23 & 22 & 1 & +46.7 & 57.6 & 5.72e-06 \\
+MiniMax M2.7 & tags + token + scopes & CD & spoof & 6 & 6 & 0 & +13.3 & 92.8 & 0.0312 \\
+Kimi K2.6 & tags & IPI & trust. & 3 & 2 & 1 & +2.2 & -- & 1 \\
+Kimi K2.6 & tags & IPI & unauth. & 6 & 6 & 0 & +13.3 & 92.8 & 0.0312 \\
+Kimi K2.6 & tags & IPI & spoof & 5 & 5 & 0 & +11.1 & -- & 0.0625 \\
+Kimi K2.6 & tags & CD & trust. & 4 & 2 & 2 & +0.0 & -- & 1 \\
+Kimi K2.6 & tags & CD & unauth. & 9 & 2 & 7 & -11.1 & 81.6 & 0.18 \\
+Kimi K2.6 & tags & CD & spoof & 3 & 1 & 2 & -2.2 & -- & 1 \\
+Kimi K2.6 & tags + token & IPI & trust. & 3 & 2 & 1 & +2.2 & -- & 1 \\
+Kimi K2.6 & tags + token & IPI & unauth. & 6 & 6 & 0 & +13.3 & 92.8 & 0.0312 \\
+Kimi K2.6 & tags + token & IPI & spoof & 7 & 6 & 1 & +11.1 & 93.8 & 0.125 \\
+Kimi K2.6 & tags + token & CD & trust. & 3 & 2 & 1 & +2.2 & -- & 1 \\
+Kimi K2.6 & tags + token & CD & unauth. & 9 & 3 & 6 & -6.7 & 81.6 & 0.508 \\
+Kimi K2.6 & tags + token & CD & spoof & 31 & 31 & 0 & +68.9 & 51.6 & 9.31e-10 \\
+Kimi K2.6 & scopes & IPI & trust. & 7 & 1 & 6 & -11.1 & 93.8 & 0.125 \\
+Kimi K2.6 & scopes & IPI & unauth. & 6 & 6 & 0 & +13.3 & 92.8 & 0.0312 \\
+Kimi K2.6 & scopes & IPI & spoof & 2 & 2 & 0 & +4.4 & -- & 0.5 \\
+Kimi K2.6 & scopes & CD & trust. & 8 & 2 & 6 & -8.9 & 94.6 & 0.289 \\
+Kimi K2.6 & scopes & CD & unauth. & 23 & 23 & 0 & +51.1 & 57.6 & 2.38e-07 \\
+Kimi K2.6 & scopes & CD & spoof & 28 & 27 & 1 & +57.8 & 52.8 & 2.16e-07 \\
+Kimi K2.6 & tags + token + scopes & IPI & trust. & 5 & 2 & 3 & -2.2 & -- & 1 \\
+Kimi K2.6 & tags + token + scopes & IPI & unauth. & 6 & 6 & 0 & +13.3 & 92.8 & 0.0312 \\
+Kimi K2.6 & tags + token + scopes & IPI & spoof & 7 & 7 & 0 & +15.6 & 93.8 & 0.0156 \\
+Kimi K2.6 & tags + token + scopes & CD & trust. & 7 & 3 & 4 & -2.2 & 93.8 & 1 \\
+Kimi K2.6 & tags + token + scopes & CD & unauth. & 23 & 23 & 0 & +51.1 & 57.6 & 2.38e-07 \\
+Kimi K2.6 & tags + token + scopes & CD & spoof & 31 & 31 & 0 & +68.9 & 51.6 & 9.31e-10 \\
+GPT-5.4 & tags & IPI & trust. & 1 & 1 & 0 & +2.2 & -- & 1 \\
+GPT-5.4 & tags & IPI & unauth. & 8 & 8 & 0 & +17.8 & 94.6 & 0.00781 \\
+GPT-5.4 & tags & IPI & spoof & 9 & 8 & 1 & +15.6 & 81.6 & 0.0391 \\
+GPT-5.4 & tags & CD & trust. & 4 & 4 & 0 & +8.9 & -- & 0.125 \\
+GPT-5.4 & tags & CD & unauth. & 6 & 3 & 3 & +0.0 & 92.8 & 1 \\
+GPT-5.4 & tags & CD & spoof & 6 & 3 & 3 & +0.0 & 92.8 & 1 \\
+GPT-5.4 & tags + token & IPI & trust. & 3 & 1 & 2 & -2.2 & -- & 1 \\
+GPT-5.4 & tags + token & IPI & unauth. & 8 & 8 & 0 & +17.8 & 94.6 & 0.00781 \\
+GPT-5.4 & tags + token & IPI & spoof & 11 & 11 & 0 & +24.4 & 85.0 & 0.000977 \\
+GPT-5.4 & tags + token & CD & trust. & 7 & 4 & 3 & +2.2 & 93.8 & 1 \\
+GPT-5.4 & tags + token & CD & unauth. & 12 & 8 & 4 & +8.9 & 74.0 & 0.388 \\
+GPT-5.4 & tags + token & CD & spoof & 25 & 25 & 0 & +55.6 & 54.0 & 5.96e-08 \\
+GPT-5.4 & scopes & IPI & trust. & 7 & 1 & 6 & -11.1 & 93.8 & 0.125 \\
+GPT-5.4 & scopes & IPI & unauth. & 4 & 4 & 0 & +8.9 & -- & 0.125 \\
+GPT-5.4 & scopes & IPI & spoof & 9 & 8 & 1 & +15.6 & 81.6 & 0.0391 \\
+GPT-5.4 & scopes & CD & trust. & 12 & 8 & 4 & +8.9 & 74.0 & 0.388 \\
+GPT-5.4 & scopes & CD & unauth. & 23 & 23 & 0 & +51.1 & 57.6 & 2.38e-07 \\
+GPT-5.4 & scopes & CD & spoof & 26 & 26 & 0 & +57.8 & 55.8 & 2.98e-08 \\
+GPT-5.4 & tags + token + scopes & IPI & trust. & 10 & 2 & 8 & -13.3 & 83.4 & 0.109 \\
+GPT-5.4 & tags + token + scopes & IPI & unauth. & 8 & 8 & 0 & +17.8 & 94.6 & 0.00781 \\
+GPT-5.4 & tags + token + scopes & IPI & spoof & 11 & 11 & 0 & +24.4 & 85.0 & 0.000977 \\
+GPT-5.4 & tags + token + scopes & CD & trust. & 11 & 7 & 4 & +6.7 & 85.0 & 0.549 \\
+GPT-5.4 & tags + token + scopes & CD & unauth. & 23 & 23 & 0 & +51.1 & 57.6 & 2.38e-07 \\
+GPT-5.4 & tags + token + scopes & CD & spoof & 27 & 27 & 0 & +60.0 & 57.6 & 1.49e-08 \\
+\bottomrule
+\end{tabular}
